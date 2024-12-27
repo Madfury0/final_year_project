@@ -214,28 +214,22 @@ void loop(){
         if (bb.value == 0) {
             continue;
         }
-	ei_printf("    %s (%f) [ x: %u, y: %u, width: %u, height: %u ]\n", bb.label, bb.value, bb.x, bb.y, bb.width, bb.height);
-
-
-   	String prediction = bb.label;
-	float confidence = bb.value;
-                                                               ei_printf("    %s: %.5f\n",prediction,confidence);
-                                                        	 ei_printf(" %s (%f) [ x: %u, y: %u, width:%u, height: %u ]\n", bb.label, bb.value, bb.x, bb.y, bb.width, bb.height);
-    if (prediction == "person" && confidence >= 0.8){
-        playAudio(person_wav);
-        ei_delay(2000);
-    }                                                       else if (prediction == "car" && confidence >= 0.8){
-        playAudio(car_wav);
-        ei_delay(2000);
-    }
+	      ei_printf("    %s (%f) [ x: %u, y: %u, width: %u, height: %u ]\n", bb.label, bb.value, bb.x, bb.y, bb.width, bb.height);
+        if (bb.label == "person" && bb.value  >= 0.8){
+            playAudio(person_wav);
+            ei_delay(2000)
+        }
+        else if (bb.label == "car" && bb.value >= 0.8){
+            playAudio(car_wav);
+            ei_delay(2000);
+        }
     }
     if (!bb_found) {
         ei_printf("    No objects found\n");
     }
 #else
     for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++) {
-        ei_printf("    %s: %.5f\n", result.classification[ix].label,
-                                    result.classification[ix].value);
+        ei_printf("    %s: %.5f\n", result.classification[ix].label,result.classification[ix].value);
     }
 #endif
 
