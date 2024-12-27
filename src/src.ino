@@ -1,4 +1,4 @@
-/* Edge Impulse Arduino examples
+/* Edge Impulse
  * Copyright (c) 2022 EdgeImpulse Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
