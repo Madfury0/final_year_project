@@ -124,13 +124,6 @@ void ei_camera_deinit(void);
 bool ei_camera_capture(uint32_t img_width, uint32_t img_height, uint8_t *out_buf);
 void playAudio(const unsigned char* audioArray);
 
-//sensors pins                                        
-#define trigPin 2
-#define echoPin 11
-#define vibratorPin 15
-#define SpeakerPin 14
-#define sampleRate 16000
-
 
 void playAudio(const unsigned char* audioArray) {
     unsigned int audioLength = 35884;
