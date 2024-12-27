@@ -23,13 +23,9 @@
 /* Includes ---------------------------------------------------------------- */
 #include <person_and_car_perfect_model_inferencing.h> 
 #include "edge-impulse-sdk/dsp/image/image.hpp"
-
 #include "esp_camera.h"
-                                 
 #include "sound.h"
 
-// Select camera model - find more camera models in camera_pins.h file here
-// https://github.com/espressif/arduino-esp32/blob/master/libraries/ESP32/examples/Camera/CameraWebServer/camera_pins.h
 
 //#define CAMERA_MODEL_ESP_EYE // Has PSRAM
 #define CAMERA_MODEL_AI_THINKER // Has PSRAM
@@ -81,10 +77,17 @@
 #define EI_CAMERA_RAW_FRAME_BUFFER_ROWS           240
 #define EI_CAMERA_FRAME_BYTE_SIZE                 3
 
+#define trigPin 2
+#define echoPin 11
+#define vibratorPin 15
+#define SpeakerPin 14
+#define sampleRate 16000
+
+
 /* Private variables ------------------------------------------------------- */
-static bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
+static bool debug_nn = false;
 static bool is_initialised = false;
-uint8_t *snapshot_buf; //points to the output of the capture
+uint8_t *snapshot_buf;
 
 static camera_config_t camera_config = {
     .pin_pwdn = PWDN_GPIO_NUM,
@@ -104,17 +107,13 @@ static camera_config_t camera_config = {
     .pin_vsync = VSYNC_GPIO_NUM,
     .pin_href = HREF_GPIO_NUM,
     .pin_pclk = PCLK_GPIO_NUM,
-
-    //XCLK 20MHz or 10MHz for OV2640 double FPS (Experimental)
     .xclk_freq_hz = 20000000,
     .ledc_timer = LEDC_TIMER_0,
     .ledc_channel = LEDC_CHANNEL_0,
-
-    .pixel_format = PIXFORMAT_JPEG, //YUV422,GRAYSCALE,RGB565,JPEG
-    .frame_size = FRAMESIZE_QVGA,    //QQVGA-UXGA Do not use sizes above QVGA when not JPEG
-
-    .jpeg_quality = 12, //0-63 lower number means higher quality
-    .fb_count = 1,       //if more than one, i2s runs in continuous mode. Use only with JPEG
+    .pixel_format = PIXFORMAT_JPEG,
+    .frame_size = FRAMESIZE_QVGA,
+    .jpeg_quality = 12, //0-63 
+    .fb_count = 1,
     .fb_location = CAMERA_FB_IN_PSRAM,
     .grab_mode = CAMERA_GRAB_WHEN_EMPTY,
 };
@@ -122,34 +121,32 @@ static camera_config_t camera_config = {
 /* Function definitions ------------------------------------------------------- */
 bool ei_camera_init(void);
 void ei_camera_deinit(void);
-bool ei_camera_capture(uint32_t img_width, uint32_t img_height, uint8_t *out_buf) ;
+bool ei_camera_capture(uint32_t img_width, uint32_t img_height, uint8_t *out_buf);
+void playAudio(const unsigned char* audioArray);
 
-//sensors pins                                          #define trigPin 2
+//sensors pins                                        
+#define trigPin 2
 #define echoPin 11
-#define vibratorPin 15                                  #define SpeakerPin 14
-
+#define vibratorPin 15
+#define SpeakerPin 14
 #define sampleRate 16000
 
-/**
-* @brief      Arduino setup function
-*/
 
-//function to play audio                                void playAudio(const unsigned char* audioArray) {
-  unsigned int audioLength = 35884;                     
-  for (unsigned int i = 44; i < audioLength; i++) {
-    uint8_t sample = pgm_read_byte(&audioArray[i]);         analogWrite(SpeakerPin,sample);
-    delayMicroseconds(1000000 / sampleRate);
+void playAudio(const unsigned char* audioArray) {
+    unsigned int audioLength = 35884;
+    for (unsigned int i = 44; i < audioLength; i++) {
+        uint8_t sample = pgm_read_byte(&audioArray[i]);
+        analogWrite(SpeakerPin,sample);
+        delayMicroseconds(1000000 / sampleRate);
   }
 }
     
-void setup()
-{
-   pinMode(trigPin, OUTPUT);                               pinMode(echoPin, INPUT);
-   pinMode(SpeakerPin, OUTPUT);
-   pinMode(vibratorPin, OUTPUT);                           
-    // put your setup code here, to run once:
+void setup(){
+    pinMode(trigPin, OUTPUT);
+    pinMode(echoPin, INPUT);
+    pinMode(SpeakerPin, OUTPUT);
+    pinMode(vibratorPin, OUTPUT);
     Serial.begin(115200);
-    //comment out the below line to start inference immediately after upload
     Serial.println("Edge Impulse Inferencing Demo");
     if (ei_camera_init() == false) {
         ei_printf("Failed to initialize Camera!\r\n");
@@ -162,36 +159,20 @@ void setup()
     ei_sleep(2000);
 }
 
-/**
-* @brief      Get data and run inferencing
-*
-* @param[in]  debug  Get debug info if true
-*/
-void loop()
-{
-// Trigger pulse
-
+void loop(){
     digitalWrite(trigPin, LOW);
     delayMicroseconds(2);
     digitalWrite(trigPin, HIGH);
     delayMicroseconds(10);
     digitalWrite(trigPin, LOW);
-
-    // Read the echo pulse duration
     long duration = pulseIn(echoPin, HIGH);
-
-    // Calculate distance in centimeters
     int distance = duration * 0.034 / 2;                
-    // Print distance to Serial Monitor
     Serial.print("Distance: ");
     Serial.print(distance);
     Serial.println(" cm");
 
-    // Check if distance is 50cm or below to switch on the vibrator 
-    if (distance <= 40) {                                       analogWrite(vibratorPin, 255); // Turn on the vibrator
-    } else {                                                    analogWrite(vibratorPin, 0); // Turn off the vibrator
-        }                                                                                                            delay (200);
-    // instead of wait_ms, we'll wait on the signal, this allows threads to cancel us...
+    if (distance <= 40) {                                       analogWrite(vibratorPin, 255);
+    } else {                                                    analogWrite(vibratorPin, 0);
     if (ei_sleep(5) != EI_IMPULSE_OK) {
         return;
     }
@@ -240,17 +221,13 @@ void loop()
 	float confidence = bb.value;
                                                                ei_printf("    %s: %.5f\n",prediction,confidence);
                                                         	 ei_printf(" %s (%f) [ x: %u, y: %u, width:%u, height: %u ]\n", bb.label, bb.value, bb.x, bb.y, bb.width, bb.height);
-
-
-if (prediction == "person" && confidence >= 0.8)
- {                                                                 playAudio(person_wav);
- 	ei_delay(2000);
-        }                                                       // Check if the prediction is 'car' with confidence 0.8 or above    
-                                                else if (prediction == "car" && confidence >= 0.
-8) {                                                 
-	playAudio(car_wav);
-	ei_delay(2000);
-        }
+    if (prediction == "person" && confidence >= 0.8){
+        playAudio(person_wav);
+        ei_delay(2000);
+    }                                                       else if (prediction == "car" && confidence >= 0.8){
+        playAudio(car_wav);
+        ei_delay(2000);
+    }
     }
     if (!bb_found) {
         ei_printf("    No objects found\n");
@@ -271,11 +248,6 @@ if (prediction == "person" && confidence >= 0.8)
 
 }
 
-/**
- * @brief   Setup image sensor & start streaming
- *
- * @retval  false if initialisation failed
- */
 bool ei_camera_init(void) {
 
     if (is_initialised) return true;
@@ -313,9 +285,6 @@ bool ei_camera_init(void) {
     return true;
 }
 
-/**
- * @brief      Stop streaming of sensor data
- */
 void ei_camera_deinit(void) {
 
     //deinitialize the camera
@@ -331,18 +300,6 @@ void ei_camera_deinit(void) {
     return;
 }
 
-
-/**
- * @brief      Capture, rescale and crop image
- *
- * @param[in]  img_width     width of output image
- * @param[in]  img_height    height of output image
- * @param[in]  out_buf       pointer to store output image, NULL may be used
- *                           if ei_camera_frame_buffer is to be used for capture and resize/cropping.
- *
- * @retval     false if not initialised, image captured, rescaled or cropped failed
- *
- */
 bool ei_camera_capture(uint32_t img_width, uint32_t img_height, uint8_t *out_buf) {
     bool do_resize = false;
 
