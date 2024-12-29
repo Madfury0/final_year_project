@@ -1,0 +1,1 @@
+The zip files contain JSON type data. Compressed to reduce size for efficient upload to GitHub.
